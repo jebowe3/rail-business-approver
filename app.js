@@ -87,13 +87,39 @@ async function getAllFeaturesByWhere(layer, where, outFields, returnGeometry) {
 }
 
 async function verifyGroupMembership(username, token) {
-  const url = `${config.portalUrl}/sharing/rest/community/groups/${encodeURIComponent(config.authorizedGroupId)}/users`;
-  const response = await fetch(`${url}?f=json&token=${encodeURIComponent(token)}`);
+  const url =
+    `${config.portalUrl}/sharing/rest/community/groups/` +
+    `${encodeURIComponent(config.authorizedGroupId)}/users`;
+
+  const body = new URLSearchParams({
+    f: "json",
+    token
+  });
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body
+  });
+
   const data = await response.json();
-  if (!response.ok || data.error) throw new Error(data.error?.message || "Could not verify group membership.");
-  const names = [data.owner, ...(data.admins || []), ...(data.users || [])]
+
+  if (!response.ok || data.error) {
+    throw new Error(
+      data.error?.message || "Could not verify group membership."
+    );
+  }
+
+  const names = [
+    data.owner,
+    ...(data.admins || []),
+    ...(data.users || [])
+  ]
     .filter(Boolean)
     .map((name) => String(name).toLowerCase());
+
   return names.includes(username.toLowerCase());
 }
 
