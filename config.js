@@ -13,5 +13,6 @@ window.APP_CONFIG = Object.freeze({
   approvedValue: 1,
   processedValue: 4,
   targetSourceIdField: "SourceGlobalID",
+  railBusinessIdField: "RailBusinessID",
   batchSize: 200
 });
