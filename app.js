@@ -86,6 +86,45 @@ async function getAllFeaturesByWhere(layer, where, outFields, returnGeometry) {
   return features;
 }
 
+async function getMaxRailBusinessId() {
+  const idField = findField(
+    targetLayer,
+    config.railBusinessIdField
+  ).name;
+
+  const query = targetLayer.createQuery();
+
+  query.where = `${idField} IS NOT NULL`;
+  query.returnGeometry = false;
+
+  query.outStatistics = [
+    {
+      statisticType: "max",
+      onStatisticField: idField,
+      outStatisticFieldName: "maxRailBusinessId"
+    }
+  ];
+
+  const result = await targetLayer.queryFeatures(query);
+
+  const value =
+    result.features?.[0]?.attributes?.maxRailBusinessId;
+
+  if (value == null) {
+    return 0;
+  }
+
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    throw new Error(
+      `Could not determine the maximum ${idField}.`
+    );
+  }
+
+  return numericValue;
+}
+
 async function verifyGroupMembership(username, token) {
   const url =
     `${config.portalUrl}/sharing/rest/community/groups/` +
@@ -142,6 +181,11 @@ async function initializeLayers(PortalItem, FeatureLayer) {
   }
   if (!findField(targetLayer, config.targetSourceIdField)) {
     throw new Error(`The target does not contain ${config.targetSourceIdField}. Add it before using this tool.`);
+  }
+  if (!findField(targetLayer, config.railBusinessIdField)) {
+    throw new Error(
+      `The target does not contain ${config.railBusinessIdField}. Add it before using this tool.`
+    );
   }
   if (!sourceLayer.capabilities?.operations?.supportsEditing) {
     throw new Error("Your account cannot update the source layer.");
@@ -250,6 +294,22 @@ async function processApproved() {
   };
 
   try {
+    const railBusinessIdField = findField(
+      targetLayer,
+      config.railBusinessIdField
+    ).name;
+  
+    const maxRailBusinessId = await getMaxRailBusinessId();
+  
+    let nextRailBusinessId = maxRailBusinessId + 1;
+  
+    for (const record of preview.records) {
+      record.targetFeature.attributes[railBusinessIdField] =
+        nextRailBusinessId;
+  
+      nextRailBusinessId += 1;
+    }
+  
     for (const recordBatch of chunks(preview.records, config.batchSize)) {
       let addResults;
       try {
